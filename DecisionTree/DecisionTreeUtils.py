@@ -16,6 +16,10 @@ class Labels(list):
   """Wrapper for python list class.
   """
 
+  def __init__(self, base_list):
+    super().__init__(base_list)
+    self.fractional_counts = np.ones(len(self))
+
   def dict(self):
     """Return a dictionary with possible label values as keys
     and count of each label value as dict value.
@@ -29,15 +33,33 @@ class Labels(list):
 
     return label_dict
 
-  def entropy(self):
+  def entropy(self, base=np.e):
     """Return entropy of labels.
     """
     label_dict = self.dict()
     H = 0
     for label, count in label_dict.items():
-      H -= (count/len(self))*np.log2(count/len(self))
+      H -= (count/len(self))*np.log(count/len(self))/np.log(base)
 
     return H
+
+  def majority_error(self):
+    """Return majority error of labels, ie the error if
+    the most common label were chosen to represent all.
+    """
+    label_dict = self.dict()
+    return (len(self) - label_dict[self.most_common()])/len(self)
+
+  def Gini_index(self):
+    """
+    """
+    label_dict = self.dict()
+    GI = 1
+    for c in label_dict.values():
+      GI -= (c/len(self))**2
+
+    return GI
+
 
   def most_common(self):
     """Return most common label.
@@ -125,10 +147,10 @@ def get_Sv(S, a, v, labels, dtype=default_dtype):
 
   return Sv, Sv_labels
 
-def Gain(S, a, labels=None, labeled=False):
+def Gain(S, a, labels=None, labeled=False, metric="entropy", base=np.e):
   """Function to return the information gain of 
-  partitioning set S on attribute A, an index
-  such that S[i, A] is Value(A) for example i.
+  partitioning set S on attribute a, an index
+  such that S[i, a] is Value(A) for example i.
   
   rows in S are examples, with S[i, -1]
   being the label for example i
@@ -142,6 +164,10 @@ def Gain(S, a, labels=None, labeled=False):
   Keyword arguments:
   labels -- list of labels (Default: None)
   labeled -- is data labeled? if so must set to True (Default: False)
+  gain_metric -- what is used to calculate gain? (Default: entropy)
+      - entropy
+      - majority_error
+      - Gini_index
   """
   if labels is None and not labeled:
     return -1
@@ -152,24 +178,45 @@ def Gain(S, a, labels=None, labeled=False):
   labels = Labels(labels)
 
   nex = S.shape[0] # number of examples
-  HS = labels.entropy()
 
-  # we collect all values A takes in S, 
+  G = 0
+  # we collect all values a takes in S, 
   # and track row indices:
   values_dict = get_attr_values_dict(S,a)
 
-  G = HS
-  for value, indices in values_dict.items():
-    Sv_labels =  Labels([])
-    for i, r in enumerate(indices):
-      Sv_labels.append(labels[r])
+  #TODO: squeeze duplicate code:
+  # maybe default to entropy 
+  if metric == "entropy":
+    G = labels.entropy(base=base)
+    for value, indices in values_dict.items():
+      Sv_labels = Labels([])
+      for i, r in enumerate(indices):
+        Sv_labels.append(labels[r])
 
-    G -= (len(indices)/nex)*Sv_labels.entropy()
+      G -= (len(indices)/nex)*Sv_labels.entropy(base=base)
+
+  elif metric == "majority_error":
+    G = labels.majority_error()
+    for value, indices in values_dict.items():
+      Sv_labels = Labels([])
+      for i, r in enumerate(indices):
+        Sv_labels.append(labels[r])
+
+      G-= (len(indices)/nex)*Sv_labels.majority_error()
+
+  elif metric == "Gini_index":
+    G = labels.Gini_index()
+    for value, indices in values_dict.items():
+      Sv_labels = Labels([])
+      for i, r in enumerate(indices):
+        Sv_labels.append(labels[r])
+
+      G-= (len(indices)/nex)*Sv_labels.Gini_index()
 
   return G
 
 
-def ID3(S, attribute_dict, labels=None, labeled=False, dtype=default_dtype):
+def ID3(S, attribute_dict, labels=None, labeled=False, dtype=default_dtype, gain_metric="entropy"):
   """Contruct a decision tree via ID3 algorithm.
 
   Arguments:
@@ -179,6 +226,11 @@ def ID3(S, attribute_dict, labels=None, labeled=False, dtype=default_dtype):
   attributes -- list of attribute names (defalut None: attrs are numbered)
   labels -- list of labels (Default: None)
   labeled -- is data labeled? if so must set to True (Default: False)
+  dtype -- 
+  gain_metric -- what is used to calculate gain? (Default: entropy)
+      - entropy
+      - majority_error
+      - Gini_index
   """
 
   if labels is None and not labeled:
@@ -201,7 +253,7 @@ def ID3(S, attribute_dict, labels=None, labeled=False, dtype=default_dtype):
     return nde
 
 
-  gains = [Gain(S, i, labels) for i in range(len(attributes))]
+  gains = [Gain(S, i, labels, metric=gain_metric) for i in range(len(attributes))]
   #for i, g in enumerate(gains):
   #  print(attributes[i], g)
 
