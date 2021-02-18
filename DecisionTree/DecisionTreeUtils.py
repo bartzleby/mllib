@@ -11,6 +11,7 @@ from DecisionTree import DecisionTreeNode as dtn
 import numpy as np
 default_dtype = np.int8
 
+import pandas as pd
 
 class Labels(list):
   """Wrapper for python list class.
@@ -18,18 +19,25 @@ class Labels(list):
 
   def __init__(self, base_list):
     super().__init__(base_list)
-    self.fractional_counts = np.ones(len(self))
+    if type(base_list) is not Labels:
+      self.fractional_counts = np.ones(len(self))
+    else:
+      self.fractional_counts = base_list.fractional_counts
+    self.size = sum(self.fractional_counts)
 
   def dict(self):
     """Return a dictionary with possible label values as keys
-    and count of each label value as dict value.
+    and count of each label value as dict value, taking into 
+    account fractional counts.
     """
     label_dict = {}
-    for k in self:
+    for i, k in enumerate(self):
+#      print(i, k)
+#      print(self)
       if k in label_dict:
-        label_dict[k] += 1
+        label_dict[k] += self.fractional_counts[i]
       else:
-        label_dict[k] = 1
+        label_dict[k] = self.fractional_counts[i]
 
     return label_dict
 
@@ -39,7 +47,7 @@ class Labels(list):
     label_dict = self.dict()
     H = 0
     for label, count in label_dict.items():
-      H -= (count/len(self))*np.log(count/len(self))/np.log(base)
+      H -= (count/self.size)*np.log(count/self.size)/np.log(base)
 
     return H
 
@@ -48,7 +56,7 @@ class Labels(list):
     the most common label were chosen to represent all.
     """
     label_dict = self.dict()
-    return (len(self) - label_dict[self.most_common()])/len(self)
+    return (self.size - label_dict[self.most_common()])/self.size
 
   def Gini_index(self):
     """
@@ -56,38 +64,135 @@ class Labels(list):
     label_dict = self.dict()
     GI = 1
     for c in label_dict.values():
-      GI -= (c/len(self))**2
+      GI -= (c/self.size)**2
 
     return GI
 
 
   def most_common(self):
     """Return most common label.
+    Accounting fractional examples.
     """
-    return max(set(self), key=self.count)
+    label_dict = self.dict()
+    counts = list(label_dict.values())
+    mci = counts.index(max(counts))
+    attrs = list(label_dict.keys())
+    return attrs[mci]
+
+  def assign_fractional_counts(self, S, missing_values='?'):
+    '''Assign fractional counts to labels
+    based on data set S with missing values.
+
+    It is assumed that the data set S 
+    corresponds to these labels.
+
+    returns updated self.
+
+    Arguments:
+      S -- Dataset, unlabeled
+
+    Keyword arguments:
+      missing_values -- string representing missing values
+                        to be filled with fractional counts
+    '''
+    example_count = len(S[:,0])
+
+    attr_props = []
+    # first we gather the attribute proportions
+    # from original data set
+    for a in range(len(S[0,:])):
+      apd = {}
+      ad = get_attr_values_dict(S, a)
+      for attr_val, cols in ad.items():
+       if missing_values in ad.keys() and attr_val != missing_values:
+        apd.update({attr_val: len(cols)/(example_count-len(ad[missing_values]))})
+       else:
+        apd.update({attr_val: len(cols)/example_count})
+      attr_props.append(apd)
+
+    rowDict = {}
+    # then we traverse the data set and to find rows
+    # with missing values, and cols for which it is so
+    for r  in range(len(self)):
+      rl = list(S[r,:])
+      if missing_values in rl:
+        wi = [i for i,x in enumerate(rl) if x==missing_values] 
+        rowDict.update({r: wi})
+
+    # and pop these rows from S and from self.
+    # we go in reverse so indices from rowDict
+    # match after each pop operation.
+    popped_labels = []
+    popped_labels_fcs = []
+    popped_data_rows = np.empty((len(rowDict), len(S[0,:])), dtype=S.dtype)
+    for i, poprow in enumerate(reversed(list(rowDict.keys()))):
+      popped_labels.insert(0, self.pop(poprow))
+      popped_labels_fcs.insert(0, self.fractional_counts[poprow])
+      self.fractional_counts = np.delete(self.fractional_counts, poprow)
+      popped_data_rows[len(rowDict)-i-1, :] = S[poprow,:]
+      S = np.delete(S, poprow, axis=0)
 
 
-def Entropy(L):
-  """Function to return the entropy of
-  a set L of examples, including
-  labels as rightmost column.
+    ####################################################
+    concat_data = []
+    for i in range(len(popped_labels)):
+      new_list = list(popped_data_rows[i,:])
+      new_list.append(popped_labels[i])
+      new_list.append(popped_labels_fcs[i])
+      concat_data.append(new_list)
 
-  Can also accept a one dimensional
-  array of labels as input L, as input
 
-  returns -1 if dimension of L > 2
-  """
-  if type(L) is list:
-    return Labels(L).entropy()
-  if type(L) is Labels:
-    return Labels(L).entropy()
+    # clean this up, and maybe use recursion?
+    new_examples_collection = []    
+    # things can get a bit messy if dealing with
+    # multiplie missing attributes on an example
+    # we basically need to do a sort of cross
+    # product, ...
+    for r, cols in enumerate(list(rowDict.values())):
+      new_examples = []
+      for attri in cols:
+        if new_examples == []:
+          #create a new row for each val attr can take:
+          for v in list(attr_props[attri].keys()):
+            if v != missing_values:
+              new_row = list(concat_data[r])
+              new_row[attri] = v
+              new_row[-1] = concat_data[r][-1]*attr_props[attri][v]
+              new_examples.append(new_row)
+          if len(cols) == 1:
+            for ex in new_examples:
+               new_examples_collection.append(ex)
 
-  if L.ndim > 2:
-    return -1
-  if L.ndim == 2:
-    L = L[:,-1]
+        else:
+          nnew_examples = []
+          for example in new_examples:
+            #create a new row for each val attr can take:
+            for v in list(attr_props[attri].keys()):
+              if v != missing_values:
+                new_row = list(example)
+                new_row[attri] = v
+                new_row[-1] = example[-1]*attr_props[attri][v]
+                nnew_examples.append(new_row)
+                
+          new_examples.clear()
+          new_examples = list(nnew_examples)
 
-  return Entropy(list(L))
+      if len(cols) > 1:
+        for ex in new_examples:
+          new_examples_collection.append(ex)
+
+
+    mergarr = np.empty((len(new_examples_collection), len(S[0,:])), dtype=S.dtype)
+    fcl = list(self.fractional_counts)
+    for i, ne in enumerate(new_examples_collection):
+      self.append(ne[-2])
+      fcl.append(ne[-1])
+      mergarr[i,:] =  ne[0:4]
+
+    self.fractional_counts = np.array(fcl)
+    self.size = sum(self.fractional_counts)
+
+    return np.append(S, mergarr, 0)
 
 
 def get_attr_values_dict(S, a):
@@ -127,6 +232,22 @@ def get_attr_dict(S, attributes=None, header=False):
   return attr_dict
 
 
+def get_Sv_labels(labels, indices):
+  '''
+  '''
+  Sv_labels = Labels([])
+  lfcs = []
+
+  for i, r in enumerate(indices):
+    Sv_labels.append(labels[r])
+    lfcs.append(labels.fractional_counts[r])
+
+  Sv_labels.fractional_counts = np.array(lfcs)
+  Sv_labels.size = sum(Sv_labels.fractional_counts)
+
+  return Sv_labels
+
+
 def get_Sv(S, a, v, labels, dtype=default_dtype):
   """Return new data and labels corresponding
   to rows of S where attribute at col index a
@@ -136,14 +257,15 @@ def get_Sv(S, a, v, labels, dtype=default_dtype):
   # we collect all values A takes in S, 
   # and track row indices:
   values_dict = get_attr_values_dict(S, a)
-  indices = values_dict[v]
+  try:
+    indices = values_dict[v]
+  except KeyError:
+    return np.empty(shape=(0,0)), Labels([])
 
+  Sv_labels = get_Sv_labels(labels, indices)
   Sv = np.empty((len(indices), S.shape[1]), dtype=dtype)
-  Sv_labels = Labels([])
-
   for i, r in enumerate(indices):
-    Sv[i,:] = S[r,:]  
-    Sv_labels.append(labels[r])
+    Sv[i,:] = S[r,:]
 
   return Sv, Sv_labels
 
@@ -176,47 +298,35 @@ def Gain(S, a, labels=None, labeled=False, metric="entropy", base=np.e):
     S = S[:,0:-1]
 
   labels = Labels(labels)
-
-  nex = S.shape[0] # number of examples
+  nex = labels.size # number of examples
 
   G = 0
   # we collect all values a takes in S, 
   # and track row indices:
   values_dict = get_attr_values_dict(S,a)
 
-  #TODO: squeeze duplicate code:
-  # maybe default to entropy 
   if metric == "entropy":
     G = labels.entropy(base=base)
     for value, indices in values_dict.items():
-      Sv_labels = Labels([])
-      for i, r in enumerate(indices):
-        Sv_labels.append(labels[r])
-
-      G -= (len(indices)/nex)*Sv_labels.entropy(base=base)
+      Sv_labels = get_Sv_labels(labels, indices)
+      G -= (Sv_labels.size/nex)*Sv_labels.entropy(base=base)
 
   elif metric == "majority_error":
     G = labels.majority_error()
     for value, indices in values_dict.items():
-      Sv_labels = Labels([])
-      for i, r in enumerate(indices):
-        Sv_labels.append(labels[r])
-
-      G-= (len(indices)/nex)*Sv_labels.majority_error()
+      Sv_labels = get_Sv_labels(labels, indices)
+      G-= (SV_labels.size/nex)*Sv_labels.majority_error()
 
   elif metric == "Gini_index":
     G = labels.Gini_index()
     for value, indices in values_dict.items():
-      Sv_labels = Labels([])
-      for i, r in enumerate(indices):
-        Sv_labels.append(labels[r])
-
-      G-= (len(indices)/nex)*Sv_labels.Gini_index()
+      Sv_labels = get_Sv_labels(labels, indices)
+      G-= (Sv_labels.size/nex)*Sv_labels.Gini_index()
 
   return G
 
 
-def ID3(S, attribute_dict, labels=None, labeled=False, dtype=default_dtype, gain_metric="entropy"):
+def ID3(S, attribute_dict, labels=None, labeled=False, dtype=default_dtype, gain_metric="entropy", current_depth = 0, max_depth=np.inf, display=False):
   """Contruct a decision tree via ID3 algorithm.
 
   Arguments:
@@ -231,6 +341,9 @@ def ID3(S, attribute_dict, labels=None, labeled=False, dtype=default_dtype, gain
       - entropy
       - majority_error
       - Gini_index
+
+  current_depth -- 
+  max_depth -- maximum depth of resulting tree (Default: no limit)
   """
 
   if labels is None and not labeled:
@@ -241,7 +354,13 @@ def ID3(S, attribute_dict, labels=None, labeled=False, dtype=default_dtype, gain
 
   labels = Labels(labels);
 
-  if Entropy(labels) == 0:
+  if current_depth == max_depth:
+    nde = dtn()
+    nde.label = labels.most_common()
+    return nde
+
+  # todo: is this the right test?
+  if labels.entropy() == 0:
     nde = dtn()
     nde.label = labels[0]
     return nde
@@ -254,18 +373,27 @@ def ID3(S, attribute_dict, labels=None, labeled=False, dtype=default_dtype, gain
 
 
   gains = [Gain(S, i, labels, metric=gain_metric) for i in range(len(attributes))]
-  #for i, g in enumerate(gains):
-  #  print(attributes[i], g)
+  
+  if display:
+   print(S)
+   print(labels.entropy())
+   print(labels)
+   print(labels.fractional_counts)
+   print("gains:")
+   print(gains)
+   print()
 
   max_gain = max(gains)
   mgi = gains.index(max_gain)
   split_attr = attributes[mgi]
-
+  if display:
+   print(split_attr)
+   print()
   root = dtn(split_attr, attribute_dict[split_attr])
 
   for attr_val in root.values:
     Sv, Sv_labels = get_Sv(S, mgi, attr_val, labels, dtype=dtype)
-    
+
     if np.size(Sv) == 0:
       root.branches.update({attr_val: dtn(label=labels.most_common())})
 
@@ -273,7 +401,7 @@ def ID3(S, attribute_dict, labels=None, labeled=False, dtype=default_dtype, gain
       Sv = np.delete(Sv, mgi, 1)
       new_attr_dict = duplicate_less(split_attr, attribute_dict)
 
-      nde = ID3(Sv, new_attr_dict, Sv_labels, dtype=dtype)
+      nde = ID3(Sv, new_attr_dict, Sv_labels, dtype=dtype, current_depth=1+current_depth, max_depth=max_depth, display=display)
       root.branches.update({attr_val: nde})
 
 
@@ -294,3 +422,8 @@ def duplicate_less(key, dict):
     new_dict.update({k: v})
 
   return new_dict
+
+
+
+
+

@@ -5,12 +5,12 @@
 # Danny Bartz
 # February, 2021
 # 
-# 
+# HW1 car data set
+# training tree
 # 
 
 import numpy as np
 from DecisionTreeUtils import *
-
 
 def classex(dtroot, example, attributes):
   '''Calissify input example from dtroot.
@@ -32,22 +32,20 @@ def classex(dtroot, example, attributes):
 
   return dtroot.label
 
+
 def main():
-  dtype = "|U4"
-  D = np.genfromtxt("data/tennis.csv", dtype=dtype, skip_header=1)
-  attributes = ["Outlook", "Temperature", "Humidity", "Wind"]
+  dtype = "|U12"
+  D = np.genfromtxt("data/car/train.csv", delimiter=',', dtype=dtype)
+  attribute_dict = {"buying": ['vhigh', 'high', 'med', 'low'], \
+        "maint": ['vhigh', 'high', 'med', 'low'], \
+        "doors": ['2', '3', '4', '5more'],        \
+        "persons": ['2', '4', 'more'],            \
+        "lug_boot": ['small', 'med', 'big'],      \
+        "safety": ['low', 'med', 'high'] }
 
-  # hacky, but we don't care:
-  attribute_dict = get_attr_dict(D, attributes)
-  attribute_dict["Humidity"].append('L')
-  # attr_dict will generally come from a data description
+  
 
-  dtroot = ID3(D, attribute_dict, labeled=True, dtype=dtype)
-
-  example = ['S', 'C', 'L', 'S']
-  cl = classex(dtroot, example, list(attribute_dict.keys()))
-  print(cl)
-
+  dtroot = ID3(D, attribute_dict, labeled=True, dtype=dtype, gain_metric="entropy", max_depth=2)
   return dtroot
 
 
