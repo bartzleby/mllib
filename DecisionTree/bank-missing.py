@@ -5,7 +5,7 @@
 # Danny Bartz
 # February, 2021
 # 
-# HW1 car data set
+# HW1 bank data set
 # training tree
 # 
 
@@ -36,31 +36,44 @@ def print_table(error_dict):
   '''
   '''
   print('tree depth & ', end='')
-  print(' & '.join(format(i+1, "d")  for i in range(len(list(error_dict.values())[0]))), end = ' \\\\\n')
+
+  print(' & '.join(format(s, "s") for s in list(error_dict.keys())), end = ' \\\\\n')
   print('\\hline')
-  for k, v in error_dict.items():
-    print(k, end=' & ')
-    print(' & '.join(format(x, "1.3f") for x in v), end = ' \\\\\n')
+  for i in range(len(list(error_dict.values())[0])):
+    print(i+1, end=' & ')
+    print(' & '.join(format(error_dict[x][i], '1.3f') for x in list(error_dict.keys())), end = ' \\\\\n')
 
   return
 
 def main():
-  dtype = "|U12"
-  test = np.genfromtxt("data/car/test.csv", delimiter=',', dtype=dtype)
-  training = np.genfromtxt("data/car/train.csv", delimiter=',', dtype=dtype)
+  dtype = "|U16"
+  test = np.genfromtxt("data/bank/test.csv", delimiter=',', dtype=dtype)
+  training = np.genfromtxt("data/bank/train.csv", delimiter=',', dtype=dtype)
   answers_test = test[:,-1]
   answers_training = training[:,-1]
-  attribute_dict = {"buying": ['vhigh', 'high', 'med', 'low'], \
-        "maint": ['vhigh', 'high', 'med', 'low'], \
-        "doors": ['2', '3', '4', '5more'],        \
-        "persons": ['2', '4', 'more'],            \
-        "lug_boot": ['small', 'med', 'big'],      \
-        "safety": ['low', 'med', 'high'] }
+  attribute_dict = {'age': 'numeric', \
+        "job": ["admin.","unknown","unemployed","management","housemaid","entrepreneur","student",         \
+                "blue-collar","self-employed","retired","technician","services"],                          \
+    "marital": ["married","divorced","single"], "education": ["unknown","secondary","primary","tertiary"], \
+    "default": ["yes", "no"], 'balance': 'numeric', "housing": ["yes", "no"], "loan": ["yes", "no"],       \
+    "contact": ["unknown","telephone","cellular"], 'day': 'numeric',                                       \
+      "month": ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"],       \
+   'duration': 'numeric', 'campaign': 'numeric', 'pdays': 'numeric', 'previous': 'numeric',               \
+   'poutcome': ["unknown","other","failure","success"] }
+
+  # TODO: add fdata to loop for more compact code
+  fdata, attribute_dict = numeric2median([training, test], attribute_dict)
+  training = fdata[0]
+  test = fdata[1]
+
+  training, mcvs = assign_most_common_general(training, missing_values="unknown")
+  test = assign_most_common_general(test, missing_values="unknown", mcvs=mcvs)[0]
 
   errors_test = {"entropy": [], "majority_error": [], "Gini_index": []}
   errors_training = {"entropy": [], "majority_error": [], "Gini_index": []}
 
-  for i in range(6):
+
+  for i in range(16):
    for metric in list(errors_test.keys()):
     dtroot = ID3(training, attribute_dict, labeled=True, dtype=dtype, gain_metric=metric, max_depth=i+1)
 
@@ -91,7 +104,7 @@ def main():
   print_table(errors_test)
   print_table(errors_training)
 
-  return
+  return dtroot
 
 
 if __name__ == "__main__":

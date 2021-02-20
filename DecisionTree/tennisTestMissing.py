@@ -20,24 +20,14 @@ def main():
   D = np.genfromtxt("data/tennis-missing.csv", dtype=dtype, skip_header=1, missing_values="?")
   attributes = ["Outlook", "Temperature", "Humidity", "Wind"]
 
-#  print('R')
-#  D[14,0] = 'R'
-#  for i, a in enumerate(attributes):
-#    print(a, Gain(D, i, labeled=True))
-
-#  print('O')
-#  D[14,0] = 'O'
-#  for i, a in enumerate(attributes):
-#    print(a, Gain(D, i, labeled=True))
-
-#  print("? and fractionalize")
-#  D[14,0] = '?'
 
   attribute_dict = get_attr_dict(D, attributes)
+  attribute_dict["Humidity"].append('L')
 
   labels = Labels(D[:,-1])
   D = np.delete(D, -1, axis=1)
   D = labels.assign_fractional_counts(D)
+
 
   decisionTree = ID3(D, attribute_dict, labels=labels, dtype=dtype, display=True)
 
