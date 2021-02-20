@@ -42,11 +42,7 @@ def main():
   attribute_dict["Humidity"].append('L')
   # attr_dict will generally come from a data description
 
-  dtroot = ID3(D, attribute_dict, labeled=True, dtype=dtype)
-
-  example = ['S', 'C', 'L', 'S']
-  cl = classex(dtroot, example, list(attribute_dict.keys()))
-  print(cl)
+  dtroot = ID3(D, attribute_dict, labeled=True, gain_metric="Gini_index", dtype=dtype, display=True)
 
   return dtroot
 

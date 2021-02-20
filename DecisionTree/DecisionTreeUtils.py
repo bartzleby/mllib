@@ -3,7 +3,7 @@
 #
 #
 #
-# note: as of python3.7, dictionaries are insertion ordered.
+# Note: as of python3.7, dictionaries are insertion ordered.
 
 import DecisionTree as tree
 from DecisionTree import DecisionTreeNode as dtn
@@ -11,7 +11,8 @@ from DecisionTree import DecisionTreeNode as dtn
 import numpy as np
 default_dtype = np.int8
 
-import pandas as pd
+from collections import Counter
+from statistics import mode
 
 class Labels(list):
   """Wrapper for python list class.
@@ -86,7 +87,7 @@ class Labels(list):
     It is assumed that the data set S 
     corresponds to these labels.
 
-    returns updated self.
+    updates self and returns new data set.
 
     Arguments:
       S -- Dataset, unlabeled
@@ -110,14 +111,10 @@ class Labels(list):
         apd.update({attr_val: len(cols)/example_count})
       attr_props.append(apd)
 
-    rowDict = {}
     # then we traverse the data set and to find rows
     # with missing values, and cols for which it is so
-    for r  in range(len(self)):
-      rl = list(S[r,:])
-      if missing_values in rl:
-        wi = [i for i,x in enumerate(rl) if x==missing_values] 
-        rowDict.update({r: wi})
+    rowDict = get_missing_value_locations(S, missing_values)
+
 
     # and pop these rows from S and from self.
     # we go in reverse so indices from rowDict
@@ -142,10 +139,11 @@ class Labels(list):
       concat_data.append(new_list)
 
 
+    # TODO:
     # clean this up, and maybe use recursion?
     new_examples_collection = []    
     # things can get a bit messy if dealing with
-    # multiplie missing attributes on an example
+    # multiple missing attributes on an example
     # we basically need to do a sort of cross
     # product, ...
     for r, cols in enumerate(list(rowDict.values())):
@@ -193,6 +191,55 @@ class Labels(list):
     self.size = sum(self.fractional_counts)
 
     return np.append(S, mergarr, 0)
+
+def get_missing_value_locations(S, missing_values='?'):
+  '''Returna s dict with rows containing missing
+  values as keys, and lists of cols where they
+  occur in the row.
+  '''
+  rowDict = {}
+  for r  in range(len(S[:,0])):
+    rl = list(S[r,:])
+    if missing_values in rl:
+      wi = [i for i,x in enumerate(rl) if x==missing_values]
+      rowDict.update({r: wi})
+
+  return rowDict
+
+def assign_most_common_general(S, missing_values='?', mcvs=None):
+  '''Assign to missing attribute values
+  the most common value from data set
+  at large.
+
+  returns new data set.
+
+  Arguments:
+    S -- Data Set
+  Keyword arguments:
+    missing_values -- string representing missing values
+                      to be filled with fractional count
+  '''
+  if mcvs is None:
+    mcvs = [mode(S[:,a]) if mode(S[:,a]) != missing_values                 \
+                         else Counter(S[:,a].ravel()).most_common(2)[1][0] \
+                         for a in range(len(S[0,:]))                       ]
+
+  mvloc = get_missing_value_locations(S, missing_values=missing_values)
+  for r, cs in mvloc.items():
+   for c in cs:
+    S[r,c] = mcvs[c]
+
+  return S, mcvs
+
+
+def assign_most_common_specific(S):
+  '''Assign to missing attribute values
+  the most common value from data set
+  where the label matches.
+  
+  Not yet implemented.
+  '''
+  return NotImplementedError
 
 
 def get_attr_values_dict(S, a):
@@ -300,6 +347,7 @@ def Gain(S, a, labels=None, labeled=False, metric="entropy", base=np.e):
   labels = Labels(labels)
   nex = labels.size # number of examples
 
+
   G = 0
   # we collect all values a takes in S, 
   # and track row indices:
@@ -315,7 +363,7 @@ def Gain(S, a, labels=None, labeled=False, metric="entropy", base=np.e):
     G = labels.majority_error()
     for value, indices in values_dict.items():
       Sv_labels = get_Sv_labels(labels, indices)
-      G-= (SV_labels.size/nex)*Sv_labels.majority_error()
+      G-= (Sv_labels.size/nex)*Sv_labels.majority_error()
 
   elif metric == "Gini_index":
     G = labels.Gini_index()
@@ -359,7 +407,6 @@ def ID3(S, attribute_dict, labels=None, labeled=False, dtype=default_dtype, gain
     nde.label = labels.most_common()
     return nde
 
-  # todo: is this the right test?
   if labels.entropy() == 0:
     nde = dtn()
     nde.label = labels[0]
@@ -371,24 +418,28 @@ def ID3(S, attribute_dict, labels=None, labeled=False, dtype=default_dtype, gain
     nde.label = labels.most_common()
     return nde
 
+  # intercept here if needed (num2med)
 
   gains = [Gain(S, i, labels, metric=gain_metric) for i in range(len(attributes))]
-  
-  if display:
-   print(S)
-   print(labels.entropy())
-   print(labels)
-   print(labels.fractional_counts)
-   print("gains:")
-   print(gains)
-   print()
 
   max_gain = max(gains)
   mgi = gains.index(max_gain)
   split_attr = attributes[mgi]
+
   if display:
-   print(split_attr)
-   print()
+   D = np.empty((np.shape(S)[0], np.shape(S)[1]+2), dtype=S.dtype)
+   D[:,0:-2] = S
+   D[:,-2] = labels
+   D[:,-1] = labels.fractional_counts
+   print("labeled data with fractional counts: ")
+   print(D)
+   print("entropy of data: ", labels.entropy())
+   print("gains per attribute (may not be information gain): ")
+   for i, a in enumerate(attributes):
+    print(a, Gain(S, i, labels=labels, metric=gain_metric))
+   print("We split on: ", split_attr, '\n')
+
+
   root = dtn(split_attr, attribute_dict[split_attr])
 
   for attr_val in root.values:
@@ -408,6 +459,34 @@ def ID3(S, attribute_dict, labels=None, labeled=False, dtype=default_dtype, gain
   return root
 
 
+def numeric2median(SS, attribute_dict):
+  '''here we intercept 'numeric' attributes and convert them to binary on median.
+  Arguments:
+    SS -- a set or list of two data sets, training data first
+         (test data is filled based on median from training set)
+    attribute_dict -- 
+  '''
+  RSS = [] # return set
+  # TODO: preserve the original numbers and convert them again on subset median?
+  numeric_indices = [i for i,x in enumerate(list(attribute_dict.values())) if x=='numeric']
+
+  attr_medians = []
+  for ni in numeric_indices:
+    attr_vals = SS[0][:,ni]
+    attr_medians.append(np.median(attr_vals.astype(np.float), axis=0))
+
+  for S in SS:
+   for i, ni in enumerate(numeric_indices):
+    for r in range(np.shape(S)[0]):
+     S[r,ni] = 'yes' if S[r,ni].astype(np.float) > attr_medians[i] else 'no'
+   
+   RSS.append(S)
+
+  # then we must update the attribute_dict to reflect the change
+  for i in numeric_indices:
+    attribute_dict.update({list(attribute_dict.keys())[i]:['no','yes']})
+
+  return RSS, attribute_dict
 
 def duplicate_less(key, dict):
   """Duplicate a dictionary,
