@@ -10,27 +10,8 @@
 # 
 
 import numpy as np
+from DecisionTree import classify
 from DecisionTreeUtils import *
-
-def classex(dtroot, example, attributes):
-  '''Calissify input example from dtroot.
-  Currently does not handle errors, e.g. 
-  inputs not corresponding properly.
-
-  params:
-    dtroot -- root nod of decision tree ()
-    example -- list of attribute values
-          corrsponding to attribute input
-    attributes -- list of attributes
-  '''
-  while dtroot.label is None:
-    test_attr = dtroot.attribute
-    tai = attributes.index(test_attr)
-    dtroot = dtroot.classify(example[tai])
-    del attributes[tai]
-    del example[tai]
-
-  return dtroot.label
 
 def print_table(error_dict):
   '''
@@ -68,7 +49,7 @@ def main():
     predictions_test = np.empty(np.shape(answers_test), dtype=answers_test.dtype)
     for testi in range(np.shape(test)[0]):
       test_example = list(test[testi,0:-1])
-      predictions_test[testi] = classex(dtroot, test_example, list(attribute_dict.keys()))
+      predictions_test[testi] = classify(dtroot, test_example, list(attribute_dict.keys()))
       if predictions_test[testi] != answers_test[testi]:
         error_count += 1
 
@@ -80,7 +61,7 @@ def main():
     predictions_training = np.empty(np.shape(answers_training), dtype=answers_training.dtype)
     for trtesti in range(np.shape(training)[0]):
       trtest_example = list(training[trtesti,0:-1])
-      predictions_training[trtesti] = classex(dtroot, trtest_example, list(attribute_dict.keys()))
+      predictions_training[trtesti] = classify(dtroot, trtest_example, list(attribute_dict.keys()))
       if predictions_training[trtesti] != answers_training[trtesti]:
         error_count += 1
 

@@ -34,3 +34,28 @@ class DecisionTreeNode(object):
         we have yet to return some error.
         '''
         return self.branches[value]
+
+
+def classify(dtroot, example, attributes):
+  '''Calissify input example from dtroot.
+  Currently does not handle errors, e.g. 
+  inputs not corresponding properly.
+
+  params:
+    dtroot -- root nod of decision tree ()
+    example -- list of attribute values
+          corrsponding to attribute input
+    attributes -- list of attributes
+  '''
+  # so we don't accidentally destroy input list
+  attrs = list(attributes)
+  #print("receiving: ", example)
+  while dtroot.label is None:
+    test_attr = dtroot.attribute
+    tai = attrs.index(test_attr)
+    dtroot = dtroot.classify(example[tai])
+    del attrs[tai]
+    del example[tai]
+
+  return dtroot.label
+
