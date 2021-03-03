@@ -17,7 +17,7 @@ import DecisionTree as dt
 default_dtype = dt.default_dtype
 
 
-def weighted_error(stump, S, attributes, labels=None, labeled=False, weights=None):
+def weighted_error(stump, S, attributes, labels=None, labeled=False):
   '''Return weighted error of given decision stump.
   Classified with classify function from DecisionTree.
   Labels must be in {-1, 1}
@@ -33,10 +33,7 @@ def weighted_error(stump, S, attributes, labels=None, labeled=False, weights=Non
   labeled -- is data labeled? if so must set to True (Default: False)
   '''
   labels = dt.check_labels(S, labels=labels, labeled=labeled)
-  if weights is None:
-    Dt = labels.fractional_counts
-  else:
-    Dt = weights
+  Dt = labels.fractional_counts
 
   et = 1/2
   for i in range(len(Dt)):
@@ -45,33 +42,10 @@ def weighted_error(stump, S, attributes, labels=None, labeled=False, weights=Non
   return et
 
 
-def create_stump_prime(weights, S, attribute_dict, labels=None, labeled=False, dtype=default_dtype):
-  '''Returns a decision stump to minimize resulting weighted error.
-  '''
-  labels = dt.check_labels(S, labels=labels, labeled=labeled)
-  attributes = list(attribute_dict.keys())
-
-  minerr = 1
-  stump = None
-  for a, attr in enumerate(attributes):
-    test_stump = dt.DecisionTreeNode(attr, attribute_dict[attr])
-    for attr_val in test_stump.values:
-      Sv, Sv_labels = dt.get_Sv(S, a, attr_val, labels, dtype=dtype)
-      test_stump.branches.update({attr_val: dt.DecisionTreeNode(label=Sv_labels.most_common())})
-
-    we = weighted_error(test_stump, S, attributes, weights, labels=labels, labeled=labeled)
-    if we < minerr:
-      minerr = we
-      stump = test_stump
-
-
-  return stump
-
-
-def create_stump(S, attribute_dict, labels=None, labeled=False, dtype=default_dtype, weights=None):
+def create_stump(S, attribute_dict, labels=None, labeled=False, dtype=default_dtype):
   '''Return a weak decision stump.
   '''
-  return dt.ID3(S, attribute_dict, labels=labels, labeled=labeled, dtype=dtype, max_depth=1, weights=weights)
+  return dt.ID3(S, attribute_dict, labels=labels, labeled=labeled, dtype=dtype, max_depth=1)
 
 
 def AdaBoost(T, S, attribute_dict, labels=None, labeled=False, dtype=default_dtype):
@@ -96,20 +70,13 @@ def AdaBoost(T, S, attribute_dict, labels=None, labeled=False, dtype=default_dty
   Dt = [1/m for i in range(m)]
   for t in range(T):
     labels.fractional_counts = Dt
-    stump = create_stump(S, attribute_dict, labels=labels, labeled=labeled, dtype=dtype, weights=None)
-    stumps.append(stump)
-    et = weighted_error(stumps[t], S, list(attribute_dict.keys()), labels=labels, labeled=labeled, weights=None)
+    stumps.append(create_stump(S, attribute_dict, labels=labels, labeled=labeled, dtype=dtype))
+    et = weighted_error(stumps[t], S, list(attribute_dict.keys()), labels=labels, labeled=labeled)
     alphas.append( np.log((1-et)/et) /2 )
 
-    print(stumps[t], stumps[t].branches)
-    print(labels.fractional_counts[0:6])
-    print(t, stumps[t])
-    print("as: ", alphas[t])
-    print(et)
-    print()
+    print(t, stumps[t], et)
 
     Dtt = [None]*len(Dt)
-    print("pasing: ", list(S[1,:]))
     for i in range(len(Dt)):
      Dtt[i] = Dt[i] * np.exp( -alphas[t] * float(labels[i]) * float(dt.classify(stumps[t], list(S[i,:]), list(attribute_dict.keys()))))
 
@@ -117,4 +84,4 @@ def AdaBoost(T, S, attribute_dict, labels=None, labeled=False, dtype=default_dty
       Dt[i] = Dtt[i]/np.sum(Dtt)
 
 
-  return stump
+  return alphas, stumps

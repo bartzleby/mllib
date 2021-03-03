@@ -54,23 +54,13 @@ class Labels(list):
 
     return label_dict
 
-  def entropy(self, base=np.e, weights=None):
+  def entropy(self, base=np.e):
     """Return entropy of labels.
     """
     label_dict = self.dict()
     H = 0
     for label, count in label_dict.items():
-      if weights is None:
-        H -= (count/self.size)*np.log(count/self.size)/np.log(base)
-
-      else:
-        weight = 0
-        lindices = [i for i,x in enumerate(self) if x==label]
-        for wi in lindices:
-          weight += weights[wi]
-
-        # weights always sum to one
-        H -= (weight)*np.log(weight)/np.log(base)
+      H -= (count/self.size)*np.log(count/self.size)/np.log(base)
 
     return H
 
@@ -351,7 +341,7 @@ def check_labels(S, labels=None, labeled=False):
   return Labels(labels)
 
 
-def Gain(S, a, labels=None, labeled=False, metric="entropy", weights=None, base=np.e):
+def Gain(S, a, labels=None, labeled=False, metric="entropy", base=np.e):
   """Function to return the information gain of 
   partitioning set S on attribute a, an index
   such that S[i, a] is Value(A) for example i.
@@ -372,9 +362,6 @@ def Gain(S, a, labels=None, labeled=False, metric="entropy", weights=None, base=
       - entropy
       - majority_error
       - Gini_index
-  weights -- list of example weights for AdaBoost stumps (Default: None)
-             in this case we use information gain as a metric
-             We assume these sum to one.
   """
   labels = check_labels(S, labels=labels, labeled=labeled)
   nex = labels.size # number of examples
@@ -388,18 +375,7 @@ def Gain(S, a, labels=None, labeled=False, metric="entropy", weights=None, base=
     G = labels.entropy(base=base)
     for value, indices in values_dict.items():
       Sv_labels = get_Sv_labels(labels, indices)
-
-      if weights is not None:
-        Sv_weights = []
-        weighted_size = 0
-        for wi in range(len(indices)):
-          weighted_size += weights[indices[wi]]
-          Sv_weights.append(weights[indices[wi]])
-
-        G -= weighted_size*Sv_labels.entropy(base=base)
-
-      else:
-        G -= (Sv_labels.size/nex)*Sv_labels.entropy(base=base)
+      G -= (Sv_labels.size/nex)*Sv_labels.entropy(base=base)
 
   elif metric == "majority_error":
     G = labels.majority_error()
@@ -416,7 +392,7 @@ def Gain(S, a, labels=None, labeled=False, metric="entropy", weights=None, base=
   return G
 
 
-def ID3(S, attribute_dict, labels=None, labeled=False, dtype=default_dtype, gain_metric="entropy", current_depth = 0, max_depth=np.inf, weights=None, display=False):
+def ID3(S, attribute_dict, labels=None, labeled=False, dtype=default_dtype, gain_metric="entropy", current_depth = 0, max_depth=np.inf, display=False):
   """Contruct a decision tree via ID3 algorithm.
 
   Arguments:
@@ -434,8 +410,6 @@ def ID3(S, attribute_dict, labels=None, labeled=False, dtype=default_dtype, gain
 
   current_depth -- 
   max_depth -- maximum depth of resulting tree (Default: no limit)
-  weights -- list of example weights for AdaBoost stumps (entropy only)
-                                                        (Default: None)
   """
   labels = check_labels(S, labels=labels, labeled=labeled)
 
@@ -457,8 +431,7 @@ def ID3(S, attribute_dict, labels=None, labeled=False, dtype=default_dtype, gain
 
   # intercept here if needed (num2med)
 
-  gains = [Gain(S, i, labels, metric=gain_metric, weights=weights) \
-                                   for i in range(len(attributes))]
+  gains = [Gain(S, i, labels, metric=gain_metric) for i in range(len(attributes))]
 
   max_gain = max(gains)
   mgi = gains.index(max_gain)
