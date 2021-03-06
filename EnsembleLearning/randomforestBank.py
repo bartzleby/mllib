@@ -6,7 +6,7 @@
 # March, 2021
 # 
 # HW2 bank data set
-# learn adaboost
+# learn a bagged tree
 # hypothesis
 #
 
@@ -23,15 +23,14 @@ def main():
   attribute_dict = bd.attribute_dict
   S = np.genfromtxt("../data/bank/train.csv", delimiter=',', dtype=dtype)
   S, attribute_dict = numeric2median([S], attribute_dict); S = S[0];
-  S[:,-1] = labels_to_pmone(S[:,-1])
 
-  H = AdaBoost(10, S[:,0:-1], attribute_dict, S[:,-1], labeled=False, dtype=dtype)
+  forest = RandomForest(5, 10, S[:,0:-1], attribute_dict, S[:,-1], labeled=False, dtype=dtype)
 
-  with open('./pickle/Hfinal.pkl', 'wb') as file: 
+  with open('./pickle/random_forest.pkl', 'wb') as file: 
     # A new file will be created 
-    pickle.dump(H, file)
+    pickle.dump(forest, file)
 
-  return
+  return forest
 
 
 if __name__ == '__main__':

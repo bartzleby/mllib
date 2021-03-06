@@ -17,6 +17,92 @@ import DecisionTree as dt
 default_dtype = dt.default_dtype
 
 
+
+def draw_bootstrap_sample(m, S, labels=None, labeled=False, dtype=default_dtype):
+  '''Draw m samples uniformly with replacement from data
+  set S and associated labels.
+
+  Returns [Sm, Lm]
+
+  Arguments:
+  n -- number of samples to return
+  S -- dataset to be sampled
+
+  Keyword Arguments:
+  labels -- list of labels (Default: None)
+  labeled -- is data labeled? if so must set to True (Default: False)
+  '''
+  labels = dt.check_labels(S, labels=labels, labeled=labeled)
+
+  Sm = np.empty((m, np.shape(S)[1]), dtype=dtype)
+  Lm = []; fcs = [];
+
+  samples = np.random.randint(np.shape(S)[0],size=m)
+  for i, s in enumerate(samples):
+    Sm[i,:] = S[s,:]
+    Lm.append(labels[s])
+    fcs.append(labels.fractional_counts[s])
+
+  return [Sm, dt.Labels(Lm, fractional_counts=fcs)]
+
+
+def RandomForest(m, T, S, attribute_dict, labels=None, labeled=False, dtype=default_dtype):
+  '''Return bag (list) of T trees learned by drawing
+  a bootstrap sample of size m from data set S and 
+  selecting random subset of features at each node.
+
+  Arguments:
+    m -- size of bootstrap samples
+    T -- number of trees to produce
+    S -- data set from which to sample
+    attribute_dict -- 
+
+  Keyword Arguments:
+  labels -- list of labels (Default: None)
+  labeled -- is data labeled? if so must set to True (Default: False)
+  dtype -- numpy dtype
+  '''
+  labels = dt.check_labels(S, labels=labels, labeled=labeled)
+  if labeled:
+    S = S[:,0:-1]
+
+  forest = []
+  for t in range(T):
+    bss = draw_bootstrap_sample(m, S, labels=labels, dtype=dtype)
+    forest.append(dt.ID3(bss[0], attribute_dict, labels=bss[1], dtype=dtype, RandTree=True, NumRandAttr=4))  
+
+  return forest
+
+
+def BaggedTrees(m, T, S, attribute_dict, labels=None, labeled=False, dtype=default_dtype):
+  '''Return bag (list) of T trees learned by drawing
+  a bootstrap sample of size m from data set S.
+
+  Arguments:
+    m -- size of bootstrap samples
+    T -- number of trees to produce
+    S -- data set from which to sample
+    attribute_dict -- 
+
+  Keyword Arguments:
+  labels -- list of labels (Default: None)
+  labeled -- is data labeled? if so must set to True (Default: False)
+  dtype -- numpy dtype
+  '''
+  labels = dt.check_labels(S, labels=labels, labeled=labeled)
+  if labeled:
+    S = S[:,0:-1]
+
+  trees = []
+  for t in range(T):
+    bss = draw_bootstrap_sample(m, S, labels=labels, dtype=dtype)
+    trees.append(dt.ID3(bss[0], attribute_dict, labels=bss[1], dtype=dtype))
+
+
+  return trees
+
+
+
 def weighted_error(stump, S, attributes, labels=None, labeled=False):
   '''Return weighted error of given decision stump.
   Classified with classify function from DecisionTree.
@@ -43,7 +129,7 @@ def weighted_error(stump, S, attributes, labels=None, labeled=False):
 
 
 def create_stump(S, attribute_dict, labels=None, labeled=False, dtype=default_dtype):
-  '''Return a weak decision stump.
+  '''Return a presumably weak decision stump.
   '''
   return dt.ID3(S, attribute_dict, labels=labels, labeled=labeled, dtype=dtype, max_depth=1)
 
@@ -52,6 +138,8 @@ def AdaBoost(T, S, attribute_dict, labels=None, labeled=False, dtype=default_dty
   '''Return a classifier via AdaBoost algorithm using decision stumps as weak classifiers.
   Information Gain (using entropy) is used as gain metric.
   Input labels must be in {-1, 1}.
+
+  Returns array [Alphas, Stumps]
 
   Arguments:
   T -- iteration threshold
@@ -84,4 +172,21 @@ def AdaBoost(T, S, attribute_dict, labels=None, labeled=False, dtype=default_dty
       Dt[i] = Dtt[i]/np.sum(Dtt)
 
 
-  return alphas, stumps
+  return [alphas, stumps]
+
+
+def labels_to_pmone(labels):
+  '''map labels in {no, yes} to {-1,1} respectively.
+  '''
+  # TODO: probably a better way..
+  for l in range(len(labels)):
+    if labels[l] == 'no':
+      labels[l] = -1
+    elif labels[l] == 'yes':
+      labels[l] = 1
+    else:
+      print('unexpected label!')
+      print("label: ", labels[l])
+      return
+
+  return labels

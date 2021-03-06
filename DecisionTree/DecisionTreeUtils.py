@@ -8,6 +8,7 @@
 import DecisionTree as tree
 from DecisionTree import DecisionTreeNode as dtn
 
+import random
 import numpy as np
 default_dtype = np.int8
 
@@ -32,12 +33,17 @@ class Labels(list):
   """Wrapper for python list class.
   """
 
-  def __init__(self, base_list):
+  def __init__(self, base_list, fractional_counts=None):
     super().__init__(base_list)
     if type(base_list) is not Labels:
+     if fractional_counts is None:
       self.fractional_counts = np.ones(len(self))
+     else:
+      self.fractional_counts = fractional_counts; # TODO: check length
+
     else:
       self.fractional_counts = base_list.fractional_counts
+
     self.size = sum(self.fractional_counts)
 
   def dict(self):
@@ -392,7 +398,7 @@ def Gain(S, a, labels=None, labeled=False, metric="entropy", base=np.e):
   return G
 
 
-def ID3(S, attribute_dict, labels=None, labeled=False, dtype=default_dtype, gain_metric="entropy", current_depth = 0, max_depth=np.inf, display=False):
+def ID3(S, attribute_dict, labels=None, labeled=False, dtype=default_dtype, gain_metric="entropy", current_depth = 0, max_depth=np.inf, RandTree=False, NumRandAttr=1, display=False):
   """Contruct a decision tree via ID3 algorithm.
 
   Arguments:
@@ -410,6 +416,9 @@ def ID3(S, attribute_dict, labels=None, labeled=False, dtype=default_dtype, gain
 
   current_depth -- 
   max_depth -- maximum depth of resulting tree (Default: no limit)
+  NumRandAttr -- number of random attributes to consider if RandTree (Default: 1)
+  RandTree -- select a small random subset of features to split at each node?
+                                                  (Default: False)
   """
   labels = check_labels(S, labels=labels, labeled=labeled)
 
@@ -431,7 +440,13 @@ def ID3(S, attribute_dict, labels=None, labeled=False, dtype=default_dtype, gain
 
   # intercept here if needed (num2med)
 
-  gains = [Gain(S, i, labels, metric=gain_metric) for i in range(len(attributes))]
+  if RandTree:
+    featureIndices = random.sample(range(len(attributes)), NumRandAttr)
+    featureIndices.sort()
+  else:
+    featureIndices = range(len(attributes))
+
+  gains = [Gain(S, i, labels, metric=gain_metric) for i in featureIndices]
 
   max_gain = max(gains)
   mgi = gains.index(max_gain)
@@ -472,6 +487,8 @@ def ID3(S, attribute_dict, labels=None, labeled=False, dtype=default_dtype, gain
 
 def numeric2median(SS, attribute_dict):
   '''here we intercept 'numeric' attributes and convert them to binary on median.
+  returns list of ndarrays corresponding to input SS.
+
   Arguments:
     SS -- a set or list of two data sets, training data first
          (test data is filled based on median from training set)

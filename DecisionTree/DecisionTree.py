@@ -47,15 +47,16 @@ def classify(dtroot, example, attributes):
           corrsponding to attribute input
     attributes -- list of attributes
   '''
-  # so we don't accidentally destroy input list
+  # so we don't accidentally destroy input lists
   attrs = list(attributes)
+  ex = list(example)
   #print("receiving: ", example)
   while dtroot.label is None:
     test_attr = dtroot.attribute
     tai = attrs.index(test_attr)
-    dtroot = dtroot.classify(example[tai])
+    dtroot = dtroot.classify(ex[tai])
     del attrs[tai]
-    del example[tai]
+    del ex[tai]
 
   return dtroot.label
 
