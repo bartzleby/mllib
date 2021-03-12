@@ -20,28 +20,6 @@ from DecisionTree import classify
 from EnsembleLearning import *
 
 
-def classify_from_tree_bag(trees, example, attributes):
-  '''Classify example using a bag (list) of decision trees.
-
-  Returns predicted label
-
-  Arguments:
-    trees -- list of learned decision tree roots
-    example -- example to be classified
-    attributes -- list of attributes
-  '''
-  preds = {}
-  for root in trees:
-    pred = classify(root, example, attributes)
-    if pred in preds:
-      preds[pred] += 1
-    else:
-      preds.update({pred: 1})
-  
-  majority_vote = max(preds, key=preds.get)
-  return majority_vote
-
-
 def main():
   dtype = bd.dtype
   attribute_dict = bd.attribute_dict

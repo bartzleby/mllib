@@ -6,7 +6,7 @@
 # March, 2021
 # 
 # HW2 bank data set
-# learn a bagged tree
+# learn a random forest
 # hypothesis
 #
 
@@ -24,13 +24,16 @@ def main():
   S = np.genfromtxt("../data/bank/train.csv", delimiter=',', dtype=dtype)
   S, attribute_dict = numeric2median([S], attribute_dict); S = S[0];
 
-  forest = RandomForest(5, 10, S[:,0:-1], attribute_dict, S[:,-1], labeled=False, dtype=dtype)
+  forests = {}
+  for n in [2,4,6]:
+    forest = RandomForest(500, 500, S[:,0:-1], attribute_dict, S[:,-1], labeled=False, dtype=dtype, NumRandAttr=n)
+    forests.update({n: forest})
 
-  with open('./pickle/random_forest.pkl', 'wb') as file: 
+  with open('./pickle/random_forests.pkl', 'wb') as file: 
     # A new file will be created 
-    pickle.dump(forest, file)
+    pickle.dump(forests, file)
 
-  return forest
+  return forests
 
 
 if __name__ == '__main__':

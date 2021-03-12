@@ -19,25 +19,6 @@ from DecisionTree import classify
 from EnsembleLearning import *
 
 
-def classify_n_weak(n, H, example, attributes):
-  '''Classify example using hypothesis H using first n
-  weak classifiers from H.
-
-  Returns int in {-1,1}
-
-  Arguments:
-    n -- number of weak classifiers to consider in classification
-    H -- AdaBoost hypothesis, [alphas, dec.stumps]
-    example -- example to be predicted on {-1,1}
-    attributes -- list of attributes
-  '''
-  pred = 0
-  for i in range(n):
-    pred += float(H[0][i])*float(classify(H[1][i], example, attributes))
-  
-  return np.sign(pred)
-
-
 def main():
   dtype = bd.dtype
   attribute_dict = bd.attribute_dict
@@ -82,6 +63,7 @@ def main():
         error_count += 1
 
     training_errors.append(error_count/(testi+1))
+
 
 
 

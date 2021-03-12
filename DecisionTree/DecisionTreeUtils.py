@@ -497,7 +497,6 @@ def numeric2median(SS, attribute_dict):
   RSS = [] # return set
   # TODO: preserve the original numbers and convert them again on subset median?
   numeric_indices = [i for i,x in enumerate(list(attribute_dict.values())) if x=='numeric']
-
   attr_medians = []
   for ni in numeric_indices:
     attr_vals = SS[0][:,ni]

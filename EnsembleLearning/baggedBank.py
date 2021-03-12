@@ -24,7 +24,7 @@ def main():
   S = np.genfromtxt("../data/bank/train.csv", delimiter=',', dtype=dtype)
   S, attribute_dict = numeric2median([S], attribute_dict); S = S[0];
 
-  trees = BaggedTrees(5, 10, S[:,0:-1], attribute_dict, S[:,-1], labeled=False, dtype=dtype)
+  trees = BaggedTrees(500, 500, S[:,0:-1], attribute_dict, S[:,-1], labeled=False, dtype=dtype)
 
   with open('./pickle/bagged_trees.pkl', 'wb') as file: 
     # A new file will be created 

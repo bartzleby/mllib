@@ -54,7 +54,14 @@ def classify(dtroot, example, attributes):
   while dtroot.label is None:
     test_attr = dtroot.attribute
     tai = attrs.index(test_attr)
-    dtroot = dtroot.classify(ex[tai])
+    try:
+     dtroot = dtroot.classify(ex[tai])
+    except KeyError:
+     print(tai)
+     print(ex)
+     print(dtroot)
+     print(dtroot.branches)
+     return KeyError
     del attrs[tai]
     del ex[tai]
 

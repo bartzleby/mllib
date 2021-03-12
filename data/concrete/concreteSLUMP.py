@@ -7,10 +7,9 @@
 #
 # concrete SLUMP meta data in python
 #
-import numpy as np
-dtype = np.float64
+dtype = 'float'
 
-features = ['Cement', 'Slag', 'Fly ash', 'Water', 'SP', 'Coarse Aggr', 'Fine Aggr']
+features = ['Cement', 'Slag', 'Fly ash', 'Water', 'SP', 'Coarse Aggr', 'Fine Aggr', 'output']
 
 
 def main():

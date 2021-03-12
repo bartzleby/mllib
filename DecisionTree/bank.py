@@ -10,6 +10,8 @@
 # 
 
 import numpy as np
+import pickle
+
 from DecisionTree import classify
 from DecisionTreeUtils import *
 
@@ -80,8 +82,13 @@ def main():
     errors_training[metric].append(erri) 
 
 
+
+  with open('./pickle/bank-tree-errors.pkl', 'wb') as file: 
+    pickle.dump((errors_training, errors_test), file)
+
   print_table(errors_test)
   print_table(errors_training)
+
 
   return dtroot
 

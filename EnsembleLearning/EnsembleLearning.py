@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python3
 
 # 
@@ -18,6 +19,51 @@ default_dtype = dt.default_dtype
 
 
 
+
+
+def classify_n_weak(n, H, example, attributes):
+  '''Classify example using hypothesis H using first n
+  weak classifiers from H.
+
+  Returns int in {-1,1}
+
+  Arguments:
+    n -- number of weak classifiers to consider in classification
+    H -- AdaBoost hypothesis, [alphas, dec.stumps]
+    example -- example to be predicted on {-1,1}
+    attributes -- list of attributes
+  '''
+  pred = 0
+  for i in range(n):
+    pred += float(H[0][i])*float(dt.classify(H[1][i], example, attributes))
+  
+  return np.sign(pred)
+
+
+
+
+def classify_from_tree_bag(trees, example, attributes):
+  '''Classify example using a bag (list) of decision trees.
+
+  Returns predicted label
+
+  Arguments:
+    trees -- list of learned decision tree roots
+    example -- example to be classified
+    attributes -- list of attributes
+  '''
+  preds = {}
+  for root in trees:
+    pred = dt.classify(root, example, attributes)
+    if pred in preds:
+      preds[pred] += 1
+    else:
+      preds.update({pred: 1})
+  
+  majority_vote = max(preds, key=preds.get)
+  return majority_vote
+
+
 def draw_bootstrap_sample(m, S, labels=None, labeled=False, dtype=default_dtype):
   '''Draw m samples uniformly with replacement from data
   set S and associated labels.
@@ -25,8 +71,8 @@ def draw_bootstrap_sample(m, S, labels=None, labeled=False, dtype=default_dtype)
   Returns [Sm, Lm]
 
   Arguments:
-  n -- number of samples to return
-  S -- dataset to be sampled
+    n -- number of samples to return
+    S -- dataset to be sampled
 
   Keyword Arguments:
   labels -- list of labels (Default: None)
@@ -46,7 +92,7 @@ def draw_bootstrap_sample(m, S, labels=None, labeled=False, dtype=default_dtype)
   return [Sm, dt.Labels(Lm, fractional_counts=fcs)]
 
 
-def RandomForest(m, T, S, attribute_dict, labels=None, labeled=False, dtype=default_dtype):
+def RandomForest(m, T, S, attribute_dict, labels=None, labeled=False, dtype=default_dtype, NumRandAttr=1):
   '''Return bag (list) of T trees learned by drawing
   a bootstrap sample of size m from data set S and 
   selecting random subset of features at each node.
@@ -61,6 +107,7 @@ def RandomForest(m, T, S, attribute_dict, labels=None, labeled=False, dtype=defa
   labels -- list of labels (Default: None)
   labeled -- is data labeled? if so must set to True (Default: False)
   dtype -- numpy dtype
+  NumRandAttr -- number of random attributes to consider at each node split (Default: 1)
   '''
   labels = dt.check_labels(S, labels=labels, labeled=labeled)
   if labeled:
@@ -69,7 +116,7 @@ def RandomForest(m, T, S, attribute_dict, labels=None, labeled=False, dtype=defa
   forest = []
   for t in range(T):
     bss = draw_bootstrap_sample(m, S, labels=labels, dtype=dtype)
-    forest.append(dt.ID3(bss[0], attribute_dict, labels=bss[1], dtype=dtype, RandTree=True, NumRandAttr=4))  
+    forest.append(dt.ID3(bss[0], attribute_dict, labels=bss[1], dtype=dtype, RandTree=True, NumRandAttr=NumRandAttr))  
 
   return forest
 
@@ -123,8 +170,12 @@ def weighted_error(stump, S, attributes, labels=None, labeled=False):
 
   et = 1/2
   for i in range(len(Dt)):
-    et -= 0.5*Dt[i]*float(labels[i])*float(dt.classify(stump, list(S[i,:]), list(attributes)))
-
+    try:
+      et -= 0.5*Dt[i]*float(labels[i])*float(dt.classify(stump, list(S[i,:]), list(attributes)))
+    except:
+      print(labels[i])
+      print(dt.classify(stump, list(S[i,:]), list(attributes)))
+      return KeyError
   return et
 
 
@@ -139,11 +190,12 @@ def AdaBoost(T, S, attribute_dict, labels=None, labeled=False, dtype=default_dty
   Information Gain (using entropy) is used as gain metric.
   Input labels must be in {-1, 1}.
 
-  Returns array [Alphas, Stumps]
+  Returns list of lists: [Alphas[], Stumps[]]
 
   Arguments:
-  T -- iteration threshold
-  S -- example data, no header.
+    T -- iteration threshold
+    S -- example data, no header.
+    attribute_dict -- 
 
   Keyword arguments:
   labels -- list of labels (Default: None)
@@ -183,6 +235,23 @@ def labels_to_pmone(labels):
     if labels[l] == 'no':
       labels[l] = -1
     elif labels[l] == 'yes':
+      labels[l] = 1
+    else:
+      print('unexpected label!')
+      print("label: ", labels[l])
+      return
+
+  return labels
+
+
+def labels_to_pmone_01(labels):
+  '''map labels in {0, 1} to {-1,1} respectively.
+  '''
+  # TODO: probably a better way..
+  for l in range(len(labels)):
+    if labels[l] == '0' or 0:
+      labels[l] = -1
+    elif labels[l] == '1' or 1:
       labels[l] = 1
     else:
       print('unexpected label!')
