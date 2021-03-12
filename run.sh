@@ -1,5 +1,10 @@
 #! /bin/sh
 
+mkdir DecisionTree/pickle
+mkdir EnsembleLearning/pickle
+mkdir LinearRegression/pickle
+
+
 cd LinearRegression
 python3 test.py
 cd ..
