@@ -249,9 +249,9 @@ def labels_to_pmone_01(labels):
   '''
   # TODO: probably a better way..
   for l in range(len(labels)):
-    if labels[l] == '0' or 0:
+    if labels[l] == '0':
       labels[l] = -1
-    elif labels[l] == '1' or 1:
+    elif labels[l] == '1':
       labels[l] = 1
     else:
       print('unexpected label!')
