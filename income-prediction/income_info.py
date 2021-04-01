@@ -1,5 +1,5 @@
 
-
+dtype = "|U30"
 attr_dict = { \
     "age": ["continuous"],                                        \
     "workclass": ["Private", "Self-emp-not-inc", "Self-emp-inc",  \

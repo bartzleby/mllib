@@ -485,7 +485,7 @@ def ID3(S, attribute_dict, labels=None, labeled=False, dtype=default_dtype, gain
   return root
 
 
-def numeric2median(SS, attribute_dict):
+def numeric2median(SS, attribute_dict, indicator="numeric"):
   '''here we intercept 'numeric' attributes and convert them to binary on median.
   returns list of ndarrays corresponding to input SS.
 
@@ -493,10 +493,12 @@ def numeric2median(SS, attribute_dict):
     SS -- a set or list of two data sets, training data first
          (test data is filled based on median from training set)
     attribute_dict -- 
+  Key word arguments:
+    indicator -- how is numeric data indicated? (Default: "numeric")
   '''
   RSS = [] # return set
   # TODO: preserve the original numbers and convert them again on subset median?
-  numeric_indices = [i for i,x in enumerate(list(attribute_dict.values())) if x=='numeric']
+  numeric_indices = [i for i,x in enumerate(list(attribute_dict.values())) if x[0]==indicator]
   attr_medians = []
   for ni in numeric_indices:
     attr_vals = SS[0][:,ni]

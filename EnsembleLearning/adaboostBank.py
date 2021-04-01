@@ -25,7 +25,7 @@ def main():
   S, attribute_dict = numeric2median([S], attribute_dict); S = S[0];
   S[:,-1] = labels_to_pmone(S[:,-1])
 
-  H = AdaBoost(500, S[:,0:-1], attribupython3 adaPlte_dict, S[:,-1], labeled=False, dtype=dtype)
+  H = AdaBoost(500, S[:,0:-1], attribute_dict, S[:,-1], labeled=False, dtype=dtype)
 
   with open('./pickle/Hfinal.pkl', 'wb') as file: 
     # A new file will be created 
