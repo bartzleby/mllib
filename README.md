@@ -7,10 +7,13 @@ need to be included in the PYTHONPATH environment variable.  This was
 acheived in my case by adding the following to `~/.cshrc` on CADE: <br />
 `setenv PYTHONPATH "/home/u6021420/cs-5350-ml/mllib"`
 
-Functions are generally well documented, which can be seen
+Functions are generally well documented, and usage instructions
+can be viewed by typing `help({function_name})` from an interactive
+python3 command line.
 
 
 HW4: SVM
+To use these function, you must import 
 
 
 

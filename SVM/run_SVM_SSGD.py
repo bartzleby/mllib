@@ -33,22 +33,29 @@ def main():
   xs[:,-1] = labels_to_pmone(dat[:,-1])
   xs[:,1:-1] = dat[:,0:-1]
 
-  print(xs[0:11,:])
+  CS = np.array([100, 500, 700])/873
 
-  C = np.array([100, 500, 700])/873
+  ws_a = []
+  ws_b = []
 
-  print(C)
+  ovals_a = []
+  ovals_b = []
 
-  (w_ssgd_a, ovals_a) = SVM_P_SSGD(100, xs, C[0], \
-        gamma_0=1, schedule=schedule_a, retobj=True)
-  (w_ssgd_b, ovals_b) = SVM_P_SSGD(100, xs, C[0], \
-        gamma_0=1, schedule=schedule_b, retobj=True)
+  for C in CS:
+    print(C)
+    (wa, oa) = SVM_P_SSGD(100, xs, C, \
+          gamma_0=1, schedule=schedule_a, retobj=True)
+    ws_a.append(wa)
+    ovals_a.append(oa)
 
-  print(w_ssgd_a)
-  print(w_ssgd_b)
+    (wb, ob) = SVM_P_SSGD(100, xs, C, \
+          gamma_0=1, schedule=schedule_b, retobj=True)
+    ws_b.append(wb)
+    ovals_b.append(ob)
+
 
   with open('./pickle/ssgd_res.pkl', 'wb') as file: 
-    pickle.dump(((w_ssgd_a, ovals_a), (w_ssgd_b, ovals_b)), file)
+    pickle.dump(((ws_a, ovals_a), (ws_b, ovals_b)), file)
 
 
   return

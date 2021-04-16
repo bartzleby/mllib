@@ -17,16 +17,23 @@ from SVM import *
 
 def main():
 
-  with open('./pickle/ssgd_res02.pkl', 'rb') as file:
+  with open('./pickle/ssgd_res.pkl', 'rb') as file:
     res = pickle.load(file) 
 
   res_a = res[0]
   res_b = res[1]
 
-  w_a = res_a[0]
-  w_b = res_b[0]
-  print(w_a)
-  print(w_b)
+  ws_a = res_a[0]
+  ws_b = res_b[0]
+
+  for i in range(3):
+    print(ws_a[i]/np.linalg.norm(ws_a[i]))
+
+  for i in range(3):
+    print(ws_b[i]/np.linalg.norm(ws_b[i]))
+
+  for i in range(3):
+    print(ws_b[i]/np.linalg.norm(ws_b[i]) - ws_a[i]/np.linalg.norm(ws_a[i]) )
 
 
   datrain = np.genfromtxt("../data/bank_note/train.csv", delimiter=',', dtype=dtype)
@@ -42,16 +49,31 @@ def main():
   m = np.shape(xs_test)[0]
   d = np.shape(xs_test)[1]
 
-  a_errors = 0
-  b_errors = 0
-  for xi in range(m):
-    if np.sign(w_a @ xs_test[xi,:]) != y_test[xi]:
-      a_errors += 1
-    if np.sign(w_b @ xs_test[xi,:]) != y_test[xi]:
-      b_errors += 1
+  for i in range(3):
 
-  print("error rate schedule A: ", a_errors/(xi+1))
-  print("error rate schedule B: ", b_errors/(xi+1))
+    w_a = ws_a[i]
+    w_b = ws_b[i]
+
+    a_errors = 0
+    b_errors = 0
+    atr_errors = 0
+    btr_errors = 0
+    for xi in range(m):
+      if np.sign(w_a @ xs_test[xi,:]) != y_test[xi]:
+        a_errors += 1
+      if np.sign(w_b @ xs_test[xi,:]) != y_test[xi]:
+        b_errors += 1
+
+      if np.sign(w_a @ xs_train[xi,:]) != y_train[xi]:
+        atr_errors += 1
+      if np.sign(w_b @ xs_train[xi,:]) != y_train[xi]:
+        btr_errors += 1
+
+    print("error rate schedule A: ", a_errors/(xi+1))
+    print("error rate schedule B: ", b_errors/(xi+1))
+
+    print("training error rate schedule A: ", atr_errors/(xi+1))
+    print("training error rate schedule B: ", btr_errors/(xi+1))
 
 
   return
