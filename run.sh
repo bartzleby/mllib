@@ -1,20 +1,21 @@
 #! /bin/sh
 
-
-if [ ! -d SVM/pickle ] 
+if [ ! -d LogisticRegression/pickle ] 
 then
-  mkdir SVM/pickle
+  mkdir LogisticRegression/pickle
 fi
 
+cd LogisticRegression
+python3 run_MAP_p4.py
+python3 run_MAP_banknote.py
+python3 run_MLE_banknote.py
+python3 plot_mle.py
+python3 plot_map.py
+python3 test_mle.py
+python3 test_map.py
 
-cd SVM
-python3 run_p5.py
-python3 run_SVM_SSGD.py
-python3 test.py
-
-python3 run_SVM_dual_optimize.py
-python3 run_SVM_dual_test.py
-
-
+cd ../NeuralNetworks
+python3 run_network_banknote.py
+python3 run_banknote_torch_net_ReLU.py
 
 cd ..
